@@ -1,5 +1,6 @@
 ## 📘 Ford Kuga Wiki — community-driven knowledge base for Ford Kuga owners
-
+---
+🌐 **Portal / Портал:** [ford-kuga-wiki.web](https://ford-kuga-wiki.web.app/)
 ---
 
 ## 🌍 About the Project / О проекте
