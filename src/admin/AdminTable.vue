@@ -167,6 +167,15 @@ onMounted(() => {
       </thead>
 
       <tbody>
+      <!-- NEW ITEM -->
+        <AdminEditItem
+            v-if="newItem"
+            :item="newItem"
+            :collection="collectionKey"
+            @saved="handleSaved"
+            @cancel="cancelEdit"
+        />
+
         <template v-for="item in filteredItems" :key="item.id">
           <!-- EDIT MODE -->
           <AdminEditItem
@@ -227,15 +236,6 @@ onMounted(() => {
             </td>
           </tr>
         </template>
-
-        <!-- NEW ITEM -->
-        <AdminEditItem
-            v-if="newItem"
-            :item="newItem"
-            :collection="collectionKey"
-            @saved="handleSaved"
-            @cancel="cancelEdit"
-        />
       </tbody>
     </table>
 

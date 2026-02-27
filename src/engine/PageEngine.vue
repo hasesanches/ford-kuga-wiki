@@ -170,13 +170,13 @@ onUnmounted(() => {
       <tr v-for="item in items" :key="item.id">
         <td v-for="col in config.columns" :key="col.key">
           <!-- IMAGE -->
-          <img
-              v-if="col.type === 'image' && item[col.key]"
-              :src="`${item[col.key]}?v=${Date.now()}`"
-              class="thumb"
-              :alt="col.key"
-              @click="openPreview(item[col.key])"
-          />
+          <div v-if="col.type === 'image' && item[col.key]" class="thumb-wrapper">
+            <img
+                :src="`${item[col.key]}?v=${Date.now()}`"
+                :alt="col.key"
+                @click="openPreview(item[col.key])"
+            />
+          </div>
           <a
               v-else-if="col.type === 'file' && item[col.key]"
               :href="item[col.key]"
@@ -191,7 +191,9 @@ onUnmounted(() => {
                 v-if="typeof item[col.key] === 'string'"
                 :href="item[col.key]"
                 target="_blank"
-            >ссылка</a>
+            >
+              ссылка
+            </a>
 
             <!-- новый формат: список -->
             <ul v-else-if="Array.isArray(item[col.key])" class="links">
@@ -279,13 +281,25 @@ onUnmounted(() => {
   color: #ffffff;
 }
 
-.thumb {
-  cursor: pointer;
-  display: block;
-  max-width: 120px;
-  max-height: 120px;
+.thumb-wrapper {
+  width: 80px;
+  height: 80px;
+  overflow: hidden;
   margin: auto;
   border: 1px solid #333;
+}
+
+.thumb-wrapper:hover img {
+  transform: scale(1.05);
+}
+
+.thumb-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  cursor: pointer;
+  transition: transform 0.3s ease;
 }
 
 .links {

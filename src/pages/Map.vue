@@ -71,8 +71,8 @@ onMounted(async () => {
 
     const config = pageConfigs['map'];
     const items = await getAll<any>(config.collection)
-    const center = [55, 45];
-    const zoom = 7;
+    const center = [58, 58];
+    const zoom = 5;
 
     ymaps.ready(() => {
       const map = new ymaps.Map(mapId, {center, zoom})
@@ -94,7 +94,7 @@ onMounted(async () => {
               `
             },
             {
-              preset: presetMap[point.type] || 'islands#greenIcon'
+              preset: presetMap[point.category] || 'islands#greenIcon'
             }
         )
 
