@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import {onMounted, ref} from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import { pageConfigs } from "@/configs";
 import { getAll } from "@/db/core";
 
 const mapId = 'yandex-map'
 const isLoaded = ref(false)
+const route = useRoute()
+const router = useRouter()
 
 const presetMap:any = {
   service: 'islands#redIcon',
@@ -27,6 +30,45 @@ function loadYandexApi(apikey: string) {
   })
 }
 
+// Функция получения параметров карты из URL
+function getMapParamsFromURL() {
+  const params: { center?: number[]; zoom?: number; type?: string } = {}
+
+  if (route.query.ll && typeof route.query.ll === 'string') {
+    const coords = route.query.ll.split(',').map(Number)
+    if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+      params.center = coords
+    }
+  }
+
+  if (route.query.z && typeof route.query.z === 'string') {
+    const zoom = Number(route.query.z)
+    if (!isNaN(zoom) && zoom >= 0 && zoom <= 23) {
+      params.zoom = zoom
+    }
+  }
+
+  if (route.query.t && typeof route.query.t === 'string') {
+    params.type = decodeURIComponent(route.query.t)
+  }
+
+  return params
+}
+
+// Функция обновления URL с параметрами карты
+function updateURL(map: any) {
+  const center = map.getCenter()
+  const zoom = map.getZoom()
+
+  const query: Record<string, string> = {}
+
+  query.ll = center.map((coord: number) => coord.toFixed(6)).join(',')
+  query.z = zoom.toString()
+
+  router.replace({ query })
+}
+
+// Функция рендера изображения
 function renderImage(image?: string) {
   if (!image) return ''
   return `
@@ -39,22 +81,23 @@ function renderImage(image?: string) {
   `
 }
 
+// Функция рендера ссылок
 function renderLinks(links: any) {
-  if (!links) return ''
+  if (!links || !Array.isArray(links)) return ''
 
   return `
      <ul style="padding-left:16px;margin:6px 0;">
         ${links
-        .filter((l: { url: any; }) => l?.url)
-        .map(
-            (l: { url: any; title: any; }) =>
-                `<li>
-                <a href="${l.url}" target="_blank">
+      .filter((l: { url: any }) => l?.url)
+      .map(
+          (l: { url: any; title: any }) =>
+              `<li>
+                <a href="${l.url}" target="_blank" rel="noopener noreferrer">
                   ${l.title || l.url}
                 </a>
               </li>`
-        )
-        .join('')}
+      )
+      .join('')}
       </ul>
     `
 }
@@ -71,30 +114,58 @@ onMounted(async () => {
 
     const config = pageConfigs['map'];
     const items = await getAll<any>(config.collection)
-    const center = [58, 58];
-    const zoom = 5;
+
+    // Получаем параметры из URL или используем значения по умолчанию
+    const urlParams = getMapParamsFromURL()
+    const center = urlParams.center || [58, 58]
+    const zoom = urlParams.zoom || 5
 
     ymaps.ready(() => {
-      const map = new ymaps.Map(mapId, {center, zoom})
+      const map = new ymaps.Map(mapId, {
+        center,
+        zoom,
+        type: urlParams.type || 'yandex#map'
+      })
 
+      // Функция debounce для предотвращения частого обновления URL
+      let timeout: NodeJS.Timeout
+      const debouncedUpdateURL = (map: any) => {
+        clearTimeout(timeout)
+        timeout = setTimeout(() => updateURL(map), 300)
+      }
+
+      // Отслеживаем изменение границ карты (движение и зум)
+      map.events.add('boundschange', function () {
+        debouncedUpdateURL(map)
+      })
+
+      // Добавляем метки на карту
       items.forEach((point) => {
+        // Проверяем, что координаты валидны
+        if (!point.x || !point.y || isNaN(+point.x) || isNaN(+point.y)) {
+          console.warn('Некорректные координаты для точки:', point)
+          return
+        }
+
         const placemark = new ymaps.Placemark(
             [+point.x, +point.y],
             {
               balloonContent: `
                 <div style="max-width:260px;">
-                  <strong>${point.name}</strong>
+                  <strong>${point.name || 'Без названия'}</strong>
                   <div style="margin-top:4px;">
                     ${point.description || ''}
                   </div>
-
                   ${renderImage(point.image)}
                   ${renderLinks(point.contact)}
                 </div>
-              `
+              `,
+              hintContent: point.name || 'Метка на карте'
             },
             {
-              preset: presetMap[point.category] || 'islands#greenIcon'
+              preset: presetMap[point.category] || 'islands#greenIcon',
+              balloonMaxWidth: 300,
+              hideIconOnBalloonOpen: false
             }
         )
 
