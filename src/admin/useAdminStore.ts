@@ -53,6 +53,15 @@ export function useAdminStore(collection: Collection) {
         }
     }
 
+    async function deleteFile(path: string) {
+        console.log('deleteFile', path)
+        const { error } = await supabase.storage
+            .from('files')
+            .remove([path])
+
+        if (error) throw error
+    }
+
     async function deleteAllFiles(itemId: string) {
         const { data, error } = await supabase.storage
             .from('files')
@@ -63,7 +72,6 @@ export function useAdminStore(collection: Collection) {
         if (!data?.length) return
 
         const paths = data.map(f => `items/${itemId}/${f.name}`)
-
         await supabase.storage.from('files').remove(paths)
     }
 
@@ -90,6 +98,7 @@ export function useAdminStore(collection: Collection) {
 
     return {
         deleteAllFiles,
+        deleteFile,
         uploadFile,
         items,
         loading,

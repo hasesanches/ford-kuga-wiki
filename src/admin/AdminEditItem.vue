@@ -30,14 +30,15 @@ const currentConfig = computed<PageConfig>(() => pageConfigs[props.collection])
 
 /* ================== LOCAL STATE ================== */
 
-const localItem = reactive<Item>({})
-const tempCategory = ref('')
-
 interface FileDownload {
   key: string
   file: File
 }
 
+const originalItem = reactive<Item>({})
+const localItem = reactive<Item>({})
+const filesToDelete = ref<string[]>([])
+const tempCategory = ref('')
 const filesDownloadList = ref<FileDownload[]>([])
 const uploading = ref(false)
 const uploadError = ref('')
@@ -48,20 +49,13 @@ watch(
     () => props.item,
     (val) => {
       Object.keys(localItem).forEach(k => delete localItem[k])
+      Object.keys(originalItem).forEach(k => delete originalItem[k])
 
       if (val) {
         const cloned = JSON.parse(JSON.stringify(val))
 
-        // for (const col of currentConfig.value.columns) {
-        //   if (col.type === 'link') {
-        //     // пусто
-        //     if (!Array.isArray(cloned[col.key])) {
-        //       cloned[col.key] = []
-        //     }
-        //   }
-        // }
-
         Object.assign(localItem, cloned)
+        Object.assign(originalItem, cloned)
       }
 
       filesDownloadList.value = []
@@ -91,6 +85,13 @@ function onFileSelect(files: FileList | null, key: string) {
   ]
 }
 
+function removeCurrentFile(key: string) {
+  if (!localItem[key]) return
+
+  filesToDelete.value.push(key)
+  localItem[key] = null
+}
+
 function removeNewFile(key: string) {
   filesDownloadList.value = filesDownloadList.value.filter(f => f.key !== key)
 }
@@ -111,6 +112,11 @@ onUnmounted(() => {
   Object.values(filePreviews.value).forEach(url => URL.revokeObjectURL(url))
 })
 
+function getPathFromUrl(url: string) {
+  const i = url.indexOf('/files/')
+  return url.slice(i + 7)
+}
+
 async function onSave() {
   if (!localItem) return
 
@@ -125,10 +131,20 @@ async function onSave() {
       localItem.id = saved.id;
     }
 
-    if(localItem.id && filesDownloadList.value.length) {
-      await adminStore.value.deleteAllFiles(localItem.id)
+    /* удалить файлы которые пользователь удалил */
+    for (const key of filesToDelete.value) {
+      if (originalItem[key]) {
+        await adminStore.value.deleteFile(getPathFromUrl(originalItem[key]))
+      }
+    }
 
+    if(localItem.id && filesDownloadList.value.length) {
       for (const { file, key } of filesDownloadList.value) {
+        // удалить старый файл для замены на новый
+        if (localItem[key]) {
+          await adminStore.value.deleteFile(getPathFromUrl(localItem[key]))
+        }
+
         localItem[key] = await adminStore.value.uploadFile(file, localItem.id)
       }
     }
@@ -180,6 +196,7 @@ function onCancel() {
           <template v-else>
             <a :href="localItem[col.key]" target="_blank">текущий файл</a>
           </template>
+          <button @click="removeCurrentFile(col.key)">✖</button>
         </template>
 
         <!-- NEW FILE -->

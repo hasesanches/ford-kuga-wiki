@@ -146,6 +146,7 @@ onUnmounted(() => {
     <div v-if="loading">Загрузка...</div>
 
     <div v-if="!loading && items.length" class="category-selector">
+      Категория для показа:
       <select v-model="selectedCategory">
         <option
             v-for="cat in categories"
@@ -192,7 +193,7 @@ onUnmounted(() => {
                 :href="item[col.key]"
                 target="_blank"
             >
-              ссылка
+              ссылка (старый тип)
             </a>
 
             <!-- новый формат: список -->
